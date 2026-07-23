@@ -15,7 +15,7 @@ import pandas as pd
 from build_code_name import load_code_name
 
 # ===================== 参数 =====================
-KLINE_CSV = "D:/Code/Python/Horizon/data/all_kline_26.csv"
+KLINE_CSV = "../data/all_kline_26.csv"
 START_DATE = "20260101"              # 起始交易日 YYYYMMDD
 MA_LEN = 20                          # 均线周期
 STREAK_DAYS = 20                     # 连续天数下限 (>=此值才入选)
@@ -34,16 +34,6 @@ def _pad(s, width: int, align: str = "left") -> str:
     s = str(s)
     n = width - _disp_w(s)
     return s + " " * n if align == "left" else " " * n + s
-
-
-def _fmt_amount(v) -> str:
-    if v is None or v != v:
-        return "-"
-    if v >= 1e8:
-        return f"{v/1e8:.2f}亿"
-    if v >= 1e4:
-        return f"{v/1e4:.1f}万"
-    return f"{v:.0f}"
 
 
 def _print_table(df, right_cols):
@@ -85,10 +75,12 @@ def main():
         起始日=("date", "min"),
         结束日=("date", "max"),
         连续天数=("date", "count"),
+        起始日收盘=("close", "first"),
         末日收盘=("close", "last"),
-        末日成交额=("amount", "last"),
-        末日换手率=("turn", "last"),
     ).reset_index()
+
+    # 起止日涨幅
+    segs["区间涨幅%"] = (segs["末日收盘"] / segs["起始日收盘"] - 1) * 100
 
     # 每只票只保留最长段
     segs = segs.sort_values(["code", "连续天数"], ascending=[True, False])
@@ -113,16 +105,15 @@ def main():
         "结束日": hit["结束日"].values,
         "连续天数": hit["连续天数"].astype(int).values,
         "末日收盘": [f"{x:.2f}" for x in hit["末日收盘"].values],
-        "成交额": [_fmt_amount(x) for x in hit["末日成交额"].values],
-        "换手率": [f"{x:.2f}%" if pd.notna(x) else "-" for x in hit["末日换手率"].values],
+        "区间涨幅": [f"{x:+.2f}%" for x in hit["区间涨幅%"].values],
         "标志": hit["标志"].values,
     })
-    out = out.sort_values(["连续天数", "结束日"], ascending=[False, False]).reset_index(drop=True)
+    out = out.sort_values(["起始日"], ascending=[True]).reset_index(drop=True)
 
     ongoing = (out["标志"] == "▲持续").sum()
     print(f"今年({START_DATE}起) 连续{STREAK_DAYS}日以上 low > {ma_col}: "
           f"{len(out)} 只股票 (其中 {ongoing} 只仍在持续)\n")
-    _print_table(out, {"连续天数", "末日收盘", "成交额", "换手率"})
+    _print_table(out, {"连续天数", "末日收盘", "区间涨幅"})
 
 
 if __name__ == "__main__":

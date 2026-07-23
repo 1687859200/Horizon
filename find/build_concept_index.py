@@ -16,7 +16,7 @@ import time
 import akshare as ak
 import pandas as pd
 
-OUTPUT_FILE = "D:/Code/Python/Horizon/data/concept_index.csv"
+OUTPUT_FILE = "../data/concept_index.csv"
 REQUEST_DELAY = 0.25
 MAX_RETRY = 3
 

@@ -15,7 +15,7 @@ import pandas as pd
 from build_code_name import load_code_name
 
 # ===================== 参数 =====================
-KLINE_CSV = "D:/Code/Python/Horizon/data/all_kline_26.csv"
+KLINE_CSV = "../data/all_kline_26.csv"
 START_DATE = "20260101"              # 起始交易日 YYYYMMDD
 DAYS = 5                             # 连续交易日数
 GAIN_MIN = 30                        # 累计涨幅下限 (%)

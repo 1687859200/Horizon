@@ -19,7 +19,7 @@ from build_code_name import load_code_name
 
 # ===================== 用户输入变量 =====================
 TARGET_DATE = "20260306"               # 目标交易日, 格式 YYYYMMDD
-KLINE_CSV = "D:/Code/Python/Horizon/data/all_kline_26.csv"
+KLINE_CSV = "../data/all_kline_26.csv"
 
 GAIN_LOW = 6.0                         # 涨幅下限 (%)
 GAIN_HIGH = 9.0                        # 涨幅上限 (%)
@@ -153,7 +153,7 @@ def main():
     )
 
     # 保存(保留原始字段, 便于后续分析)
-    # out_path = f"D:/Code/Python/Horizon/find/gain{int(GAIN_LOW)}_{int(GAIN_HIGH)}_cross_ma{MA_LEN}_{target}.csv"
+    # out_path = f"gain{int(GAIN_LOW)}_{int(GAIN_HIGH)}_cross_ma{MA_LEN}_{target}.csv"
     # final.to_csv(out_path, index=False, encoding="utf-8-sig")
     # print(f"\n结果已保存: {out_path}")
 

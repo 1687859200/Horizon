@@ -16,7 +16,7 @@
 import akshare as ak
 import pandas as pd
 
-OUTPUT_FILE = "D:/Code/Python/Horizon/data/code_name.csv"
+OUTPUT_FILE = "../data/code_name.csv"
 
 
 def to_ks_code(code6) -> str:

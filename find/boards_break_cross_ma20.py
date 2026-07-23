@@ -14,7 +14,7 @@ import pandas as pd
 from build_code_name import load_code_name
 
 # ===================== 参数 =====================
-KLINE_CSV = "D:/Code/Python/Horizon/data/all_kline_26.csv"
+KLINE_CSV = "../data/all_kline_26.csv"
 START_DATE = "20260101"              # 起始交易日
 N_BOARDS = 5                         # 连板数下限
 MA_LEN = 20                          # 均线周期

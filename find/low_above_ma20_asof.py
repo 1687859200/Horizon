@@ -19,7 +19,7 @@ import pandas as pd
 from build_code_name import load_code_name
 
 # ===================== 参数 =====================
-KLINE_CSV = "D:/Code/Python/Horizon/data/all_kline_26.csv"
+KLINE_CSV = "../data/all_kline_26.csv"
 DEFAULT_TARGET = "20260720"          # 默认目标日 YYYYMMDD
 MA_LEN = 20                          # 均线周期
 STREAK_DAYS = 20                     # 连续天数下限
