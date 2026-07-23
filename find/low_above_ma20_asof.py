@@ -20,7 +20,7 @@ from build_code_name import load_code_name
 
 # ===================== 参数 =====================
 KLINE_CSV = "../data/all_kline_26.csv"
-DEFAULT_TARGET = "20260720"          # 默认目标日 YYYYMMDD
+DEFAULT_TARGET = "20260722"          # 默认目标日 YYYYMMDD
 MA_LEN = 20                          # 均线周期
 STREAK_DAYS = 20                     # 连续天数下限
 # ===============================================
@@ -38,16 +38,6 @@ def _pad(s, width: int, align: str = "left") -> str:
     s = str(s)
     n = width - _disp_w(s)
     return s + " " * n if align == "left" else " " * n + s
-
-
-def _fmt_amount(v) -> str:
-    if v is None or v != v:
-        return "-"
-    if v >= 1e8:
-        return f"{v/1e8:.2f}亿"
-    if v >= 1e4:
-        return f"{v/1e4:.1f}万"
-    return f"{v:.0f}"
 
 
 def _print_table(df, right_cols):
@@ -87,16 +77,22 @@ def main():
     # 连续段: above==0 出现一次 seg +1, 同一连续 above==1 段内 seg 值相同
     df["above"] = (df["low"] > df[ma_col]).astype(int)
     df["seg"] = df.groupby("code")["above"].transform(lambda s: (s == 0).cumsum())
+    # 第 20 个交易日 (含起始日为第1天) 的收盘
+    df["close_20d_after"] = df.groupby("code")["close"].shift(-19)
 
     # 每段聚合 (只统计 above==1 的行)
     segs = df[df["above"] == 1].groupby(["code", "seg"]).agg(
         起始日=("date", "min"),
         结束日=("date", "max"),
         连续天数=("date", "count"),
+        起始日收盘=("close", "first"),
+        起始日20日后收盘=("close_20d_after", "first"),
         末日收盘=("close", "last"),
-        末日成交额=("amount", "last"),
-        末日换手率=("turn", "last"),
     ).reset_index()
+
+    # 起始日起 20 个交易日涨幅 / 起止日涨幅
+    segs["20日涨幅%"] = (segs["起始日20日后收盘"] / segs["起始日收盘"] - 1) * 100
+    segs["区间涨幅%"] = (segs["末日收盘"] / segs["起始日收盘"] - 1) * 100
 
     # 入选: 段结束日 == 目标日 (即目标日当天仍 above), 且连续天数 >= STREAK_DAYS
     hit = segs[
@@ -117,14 +113,15 @@ def main():
         "结束日": hit["结束日"].values,
         "连续天数": hit["连续天数"].astype(int).values,
         "末日收盘": [f"{x:.2f}" for x in hit["末日收盘"].values],
-        "成交额": [_fmt_amount(x) for x in hit["末日成交额"].values],
-        "换手率": [f"{x:.2f}%" if pd.notna(x) else "-" for x in hit["末日换手率"].values],
+        "20日涨幅": [f"{x:+.2f}%" if pd.notna(x) else "-" for x in hit["20日涨幅%"].values],
+        "区间涨幅": [f"{x:+.2f}%" for x in hit["区间涨幅%"].values],
     })
-    out = out.sort_values("连续天数", ascending=False).reset_index(drop=True)
+    out = out.sort_values(["起始日"], ascending=[True]).reset_index(drop=True)
+    out.insert(0, "#", range(1, len(out) + 1))
 
     print(f"截至 {target}, 连续{STREAK_DAYS}日以上 low > {ma_col}: "
           f"{len(out)} 只股票\n")
-    _print_table(out, {"连续天数", "末日收盘", "成交额", "换手率"})
+    _print_table(out, {"连续天数", "末日收盘", "20日涨幅", "区间涨幅"})
 
 
 if __name__ == "__main__":

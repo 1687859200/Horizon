@@ -65,6 +65,8 @@ def main():
     # 今年内切片, 在切片上重算连续段 (避免跨年段干扰)
     year = df[df["date"] >= start_norm].copy()
     year["above"] = (year["low"] > year[ma_col]).astype(int)
+    # 第 20 个交易日 (含起始日为第1天) 的收盘
+    year["close_20d_after"] = year.groupby("code")["close"].shift(-19)
     # seg: above==0 出现一次则 +1, 同一连续 above==1 段内 seg 值相同
     year["seg"] = year.groupby("code")["above"].transform(
         lambda s: (s == 0).cumsum()
@@ -76,10 +78,12 @@ def main():
         结束日=("date", "max"),
         连续天数=("date", "count"),
         起始日收盘=("close", "first"),
+        起始日20日后收盘=("close_20d_after", "first"),
         末日收盘=("close", "last"),
     ).reset_index()
 
-    # 起止日涨幅
+    # 起始日起 20 个交易日涨幅 / 起止日涨幅
+    segs["20日涨幅%"] = (segs["起始日20日后收盘"] / segs["起始日收盘"] - 1) * 100
     segs["区间涨幅%"] = (segs["末日收盘"] / segs["起始日收盘"] - 1) * 100
 
     # 每只票只保留最长段
@@ -105,15 +109,17 @@ def main():
         "结束日": hit["结束日"].values,
         "连续天数": hit["连续天数"].astype(int).values,
         "末日收盘": [f"{x:.2f}" for x in hit["末日收盘"].values],
+        "20日涨幅": [f"{x:+.2f}%" if pd.notna(x) else "-" for x in hit["20日涨幅%"].values],
         "区间涨幅": [f"{x:+.2f}%" for x in hit["区间涨幅%"].values],
         "标志": hit["标志"].values,
     })
     out = out.sort_values(["起始日"], ascending=[True]).reset_index(drop=True)
+    out.insert(0, "#", range(1, len(out) + 1))
 
     ongoing = (out["标志"] == "▲持续").sum()
     print(f"今年({START_DATE}起) 连续{STREAK_DAYS}日以上 low > {ma_col}: "
           f"{len(out)} 只股票 (其中 {ongoing} 只仍在持续)\n")
-    _print_table(out, {"连续天数", "末日收盘", "区间涨幅"})
+    _print_table(out, {"连续天数", "末日收盘", "20日涨幅", "区间涨幅"})
 
 
 if __name__ == "__main__":
