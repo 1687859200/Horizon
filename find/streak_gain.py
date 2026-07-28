@@ -18,7 +18,7 @@ from build_code_name import load_code_name
 KLINE_CSV = "../data/all_kline_26.csv"
 START_DATE = "20260101"              # 起始交易日 YYYYMMDD
 DAYS = 5                             # 连续交易日数
-GAIN_MIN = 30                        # 累计涨幅下限 (%)
+GAIN_MIN = 36                        # 累计涨幅下限 (%)
 MAX_LIMIT_UPS = 1                    # 窗口内涨停数上限 (None=不限制)
 # ===============================================
 
@@ -44,16 +44,6 @@ def _pad(s, width: int, align: str = "left") -> str:
     s = str(s)
     n = width - _disp_w(s)
     return s + " " * n if align == "left" else " " * n + s
-
-
-def _fmt_amount(v) -> str:
-    if v is None or v != v:
-        return "-"
-    if v >= 1e8:
-        return f"{v/1e8:.2f}亿"
-    if v >= 1e4:
-        return f"{v/1e4:.1f}万"
-    return f"{v:.0f}"
 
 
 def _print_table(df, right_cols):
@@ -90,6 +80,17 @@ def main():
         lambda s: s.rolling(DAYS, min_periods=DAYS).sum().shift(-(DAYS - 1))
     )
 
+    # 窗口内每日涨停形态 (*=涨停, -=未涨停)
+    def _zt_pattern(s, n):
+        arr = s.values
+        L = len(arr)
+        out = [""] * L
+        for i in range(L - n + 1):
+            seg = arr[i:i+n]
+            out[i] = "".join("*" if x == 1 else "-" for x in seg)
+        return pd.Series(out, index=s.index, dtype="object")
+    df["涨停形态"] = df.groupby("code")["涨停"].transform(lambda s: _zt_pattern(s, DAYS))
+
     mask = (
         (df["date"] >= start_norm)
         & df[f"{DAYS}日累计"].notna()
@@ -119,14 +120,13 @@ def main():
         "结束日": hit_best["结束日"].values,
         f"{DAYS}日累计": [f"{x:.2f}%" for x in hit_best[f"{DAYS}日累计"].values],
         "涨停": hit_best["窗口涨停"].astype(int).values,
-        "成交额": [_fmt_amount(x) for x in hit_best["amount"].values],
-        "换手率": [f"{x:.2f}%" if pd.notna(x) else "-" for x in hit_best["turn"].values],
+        "涨停形态": hit_best["涨停形态"].values,
     })
 
     limit_desc = f", 涨停数 <= {MAX_LIMIT_UPS}" if MAX_LIMIT_UPS is not None else ""
     print(f"今年({START_DATE}起) 连续{DAYS}日累计涨幅 >= {GAIN_MIN}%{limit_desc}: "
           f"{len(out)} 只股票 (共 {total_windows} 个达标窗口)\n")
-    _print_table(out, {f"{DAYS}日累计", "涨停", "成交额", "换手率"})
+    _print_table(out, {f"{DAYS}日累计", "涨停"})
 
 
 if __name__ == "__main__":
